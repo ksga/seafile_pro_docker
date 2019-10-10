@@ -1,0 +1,23 @@
+http:
+  middlewares:
+    hardenizeheaders:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 315360000
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://ajax.cloudflare.com/; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://sf.example.com:*; font-src 'self' data:; form-action 'self'; upgrade-insecure-requests; block-all-mixed-content"
+        referrerPolicy: "strict-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+          - PUT
+        accessControlAllowOrigin: "origin-list-or-null"
+        accessControlMaxAge: 100
+        addVaryHeader: true
+        featurePolicy: "camera 'none'; geolocation 'self'"
