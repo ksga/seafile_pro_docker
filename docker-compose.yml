@@ -1,0 +1,70 @@
+version: "3.7"
+
+services:
+  traefik:
+    image: "traefik:v2.0.1"
+    container_name: "traefik"
+    restart: always
+    command:
+      - "--log.level=WARN"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.filename=/etc/dyn.yml"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.cloudflare.acme.email=admin@example.com"
+      - "--certificatesresolvers.cloudflare.acme.storage=/etc/acme/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - "CF_API_EMAIL=mail@example.com"
+      - "CF_API_KEY=SECRET_API_KEY"
+    volumes:
+      - "./traefik/acme:/etc/acme"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik/dyn.yml:/etc/dyn.yml"
+  mariadb:
+    image: mariadb:10.4.8
+    container_name: mariadb
+    restart: always
+    command: --max_allowed_packet=128M
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - "MYSQL_ROOT_PASSWORD=SECRETPASS"
+  seafile:
+    image: docker.seadrive.org/seafileltd/seafile-pro-mc:latest
+    container_name: seafile
+    restart: always
+    volumes:
+      - data:/shared
+    environment:
+      - "DB_HOST=mariadb"
+      - "DB_ROOT_PASSWD=SECRETPASS"
+      - "TIME_ZONE=Europe/Copenhagen"
+      - "SEAFILE_ADMIN_EMAIL=mail@example.com"
+      - "SEAFILE_ADMIN_PASSWORD=PASSWORD"
+      - "SEAFILE_SERVER_HOSTNAME=sf.example.com"
+      - "SEAFILE_SERVICE_URL=https://sf.example.com"
+    depends_on:
+      - mariadb
+      - memcached
+	  # Elasticsearch might be added later on when...
+      #- elasticsearch
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seafile.rule=Host(`sf.example.com`)"
+      - "traefik.http.routers.seafile.entrypoints=websecure"
+      - "traefik.http.routers.seafile.tls.certresolver=cloudflare"
+      - "traefik.http.routers.seafile.middlewares=hardenizeheaders@file"
+  memcached:
+    image: memcached:1.5.19-alpine
+    container_name: seafile-memcached
+    entrypoint: memcached -m 128
+
+volumes:
+  db:
+  data:
