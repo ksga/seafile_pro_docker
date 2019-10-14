@@ -1,5 +1,11 @@
 version: "3.7"
 
+secrets:
+  cf_api_email:
+    file: "./secrets/cf_api_email.secret"
+  cf_api_key:
+    file: "./secrets/cf_api_key.secret"
+
 services:
   traefik:
     image: "traefik:v2.0.1"
@@ -19,9 +25,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    secrets:
+      - "cf_api_email"
+      - "cf_api_key"
     environment:
-      - "CF_API_EMAIL=mail@example.com"
-      - "CF_API_KEY=SECRET_API_KEY"
+      - "CF_API_EMAIL_FILE=/run/secrets/cf_api_email"
+      - "CF_API_KEY_FILE=/run/secrets/cf_api_key"
     volumes:
       - "./traefik/acme:/etc/acme"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
