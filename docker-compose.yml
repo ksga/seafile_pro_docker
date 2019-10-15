@@ -5,6 +5,8 @@ secrets:
     file: "./secrets/cf_api_email.secret"
   cf_api_key:
     file: "./secrets/cf_api_key.secret"
+  db_password:
+    file: "./secrets/db.secret"
 
 services:
   traefik:
@@ -42,8 +44,10 @@ services:
     command: --max_allowed_packet=128M
     volumes:
       - db:/var/lib/mysql
+    secrets:
+      - "db_password"
     environment:
-      - "MYSQL_ROOT_PASSWORD=SECRETPASS"
+      - "MYSQL_ROOT_PASSWORD_FILE=/run/secrets/db_password"
   seafile:
     image: docker.seadrive.org/seafileltd/seafile-pro-mc:latest
     container_name: seafile
