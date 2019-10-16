@@ -14,12 +14,16 @@ services:
     container_name: "traefik"
     restart: always
     command:
-      - "--log.level=WARN"
+#Set to DEBUG when problemsolving - reset to WARN when done
+      - "--log.level=WARN" 
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.file.filename=/etc/dyn.yml"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.seafilewebapp.address=:8000"
+      - "--entrypoints.seafilewebdavserver.address=:8080"
+      - "--entrypoints.seafilefileserver.address=:8082"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
       - "--certificatesresolvers.cloudflare.acme.email=admin@example.com"
@@ -27,6 +31,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+      - "8000:8000"
+      - "8080:8080"
+      - "8082:8082"      
     secrets:
       - "cf_api_email"
       - "cf_api_key"
@@ -37,6 +44,11 @@ services:
       - "./traefik/acme:/etc/acme"
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./traefik/dyn.yml:/etc/dyn.yml"
+  memcached:
+    image: memcached:1.5.19-alpine
+    container_name: seafile-memcached
+    restart: always
+    entrypoint: memcached -m 128
   mariadb:
     image: mariadb:10.4.8
     container_name: mariadb
@@ -54,6 +66,8 @@ services:
     restart: always
     volumes:
       - data:/shared
+#    secrets: #doesn't seem to implemented
+#      - "db_password"
     environment:
       - "DB_HOST=mariadb"
       - "DB_ROOT_PASSWD=SECRETPASS"
@@ -65,7 +79,7 @@ services:
     depends_on:
       - mariadb
       - memcached
-	  # Elasticsearch might be added later on when...
+# Elasticsearch might be added later on...
       #- elasticsearch
     labels:
       - "traefik.enable=true"
@@ -73,11 +87,15 @@ services:
       - "traefik.http.routers.seafile.entrypoints=websecure"
       - "traefik.http.routers.seafile.tls.certresolver=cloudflare"
       - "traefik.http.routers.seafile.middlewares=hardenizeheaders@file"
-  memcached:
-    image: memcached:1.5.19-alpine
-    container_name: seafile-memcached
-    restart: always
-    entrypoint: memcached -m 128
+      - "traefik.http.routers.seafilewebapp.rule=Host(`sf.kennethandersen.com`)"
+      - "traefik.http.routers.seafilewebapp.entrypoints=seafilewebapp"
+      - "traefik.http.routers.seafilewebapp.tls.certresolver=cloudflare"
+      - "traefik.http.routers.seafilewebdavserver.rule=Host(`sf.kennethandersen.com`) && PathPrefix(`/seafdav`)"
+      - "traefik.http.routers.seafilewebdavserver.entrypoints=seafilewebdavserver"
+      - "traefik.http.routers.seafilewebdavserver.tls.certresolver=cloudflare"
+      - "traefik.http.routers.seafilefileserver.rule=Host(`sf.kennethandersen.com`) && PathPrefix(`/seafhttp`)"
+      - "traefik.http.routers.seafilefileserver.entrypoints=seafilefileserver"
+      - "traefik.http.routers.seafilefileserver.tls.certresolver=cloudflare"
 
 volumes:
   db:
